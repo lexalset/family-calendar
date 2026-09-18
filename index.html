@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#667eea">
-    <title>Семейный календарь</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Календарь Теняковых">
+    <title>Календарь Теняковых</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon-192.png" type="image/png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -46,6 +51,21 @@
         
         .sync-status.connected { background: rgba(67, 233, 123, 0.3); }
         .sync-status.error { background: rgba(255, 107, 107, 0.3); }
+        
+        .install-btn {
+            display: none;
+            margin-top: 10px;
+            padding: 8px 20px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .install-btn.visible { display: inline-block; }
         
         .calendar { padding: 15px; }
         
@@ -277,13 +297,19 @@
         
         .event-person-tag {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 3px 8px;
+            border-radius: 5px;
             color: white;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 500;
             margin-left: 5px;
         }
+        
+        .event-person-tag.papa { background: #4facfe; }
+        .event-person-tag.mama { background: #d57eeb; }
+        .event-person-tag.gosha { background: #43e97b; }
+        .event-person-tag.roma { background: #fa709a; }
+        .event-person-tag.family { background: #f6d365; }
         
         .delete-event {
             background: #ff6b6b;
@@ -302,7 +328,6 @@
             font-style: italic;
         }
         
-        /* ПИН-код экран */
         .pin-screen {
             position: fixed;
             top: 0; left: 0;
@@ -361,7 +386,6 @@
     </style>
 </head>
 <body>
-    <!-- ПИН-экран -->
     <div class="pin-screen" id="pinScreen">
         <div class="pin-container">
             <h2>🔒 Введите ПИН-код</h2>
@@ -373,9 +397,10 @@
 
     <div class="container">
         <div class="header" id="header">
-            <h1>👨‍👩‍👧‍👦 Семейный календарь</h1>
+            <h1> Календарь Теняковых</h1>
             <p>Все планы семьи в одном месте</p>
-            <div class="sync-status" id="syncStatus"> Подключение...</div>
+            <div class="sync-status" id="syncStatus">⏳ Подключение...</div>
+            <button class="install-btn" id="installBtn">📱 Установить приложение</button>
         </div>
         
         <div class="calendar">
@@ -473,7 +498,6 @@
                 
                 await addDoc(collection(db, "events"), eventData);
                 
-                // Если повторяющееся - создаем на следующие 4 недели
                 if (repeatWeekly) {
                     const [year, month, day] = dateKey.split('-').map(Number);
                     for (let i = 1; i <= 4; i++) {
@@ -577,7 +601,6 @@
         window.currentEvents = {};
         let selectedDate = null;
         
-        // ПИН-код (можно изменить)
         const PIN_CODE = '1234';
         
         function checkPin() {
@@ -591,12 +614,10 @@
             }
         }
         
-        // Проверяем, введен ли уже ПИН
         if (localStorage.getItem('pinVerified') === 'true') {
             document.getElementById('pinScreen').classList.add('hidden');
         }
         
-        // Enter для ПИНа
         document.getElementById('pinInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') checkPin();
         });
@@ -762,7 +783,6 @@
             const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
             await window.saveEventToFirestore(dateKey, title, time, person, repeatWeekly);
             
-            // Отправляем уведомление
             if (sendNotification && 'Notification' in window) {
                 if (Notification.permission === 'granted') {
                     new Notification('📅 Новое событие!', {
@@ -772,7 +792,7 @@
                 } else if (Notification.permission !== 'denied') {
                     Notification.requestPermission().then(permission => {
                         if (permission === 'granted') {
-                            new Notification(' Новое событие!', {
+                            new Notification('📅 Новое событие!', {
                                 body: `${title} - ${person} в ${time || 'весь день'}`,
                                 icon: 'icon-192.png'
                             });
@@ -795,6 +815,25 @@
                 showAddForm();
             }
         }
+        
+        // PWA установка
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').classList.add('visible');
+        });
+        
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('installBtn').classList.remove('visible');
+                }
+                deferredPrompt = null;
+            }
+        });
         
         function startApp() {
             if (window.firebaseReady) {
