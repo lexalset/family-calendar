@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#667eea">
     <title>Семейный календарь</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon-192.png" type="image/png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -49,12 +49,35 @@
         
         .calendar { padding: 15px; }
         
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
         .month-title {
             font-size: 20px;
             font-weight: bold;
-            text-align: center;
-            margin-bottom: 15px;
             transition: color 0.5s ease;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .month-nav {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: inherit;
+            padding: 5px 15px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .month-nav:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
         }
         
         .weekdays {
@@ -128,6 +151,7 @@
         .event-tag.mama { background: #d57eeb; }
         .event-tag.gosha { background: #43e97b; }
         .event-tag.roma { background: #fa709a; }
+        .event-tag.family { background: #f6d365; }
         
         .more-events {
             font-size: 9px;
@@ -195,6 +219,25 @@
             font-size: 14px;
         }
         
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
         .btn {
             padding: 12px 30px;
             border: none;
@@ -259,6 +302,51 @@
             font-style: italic;
         }
         
+        /* ПИН-код экран */
+        .pin-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .pin-screen.hidden { display: none; }
+        
+        .pin-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .pin-container h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .pin-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 24px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            letter-spacing: 10px;
+        }
+        
+        .pin-error {
+            color: #ff6b6b;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
         @media (max-width: 600px) {
             body { padding: 5px; }
             .header h1 { font-size: 20px; }
@@ -268,19 +356,34 @@
             .day-number { font-size: 14px; }
             .event-tag { font-size: 8px; padding: 2px 3px; }
             .weekday { font-size: 11px; padding: 6px 1px; }
+            .month-nav { padding: 5px 10px; font-size: 20px; }
         }
     </style>
 </head>
 <body>
+    <!-- ПИН-экран -->
+    <div class="pin-screen" id="pinScreen">
+        <div class="pin-container">
+            <h2>🔒 Введите ПИН-код</h2>
+            <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="****">
+            <button class="btn btn-primary" onclick="checkPin()">Войти</button>
+            <div class="pin-error" id="pinError"></div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header" id="header">
-            <h1>👨‍‍‍👦 Семейный календарь</h1>
+            <h1>👨‍👩‍👧‍👦 Семейный календарь</h1>
             <p>Все планы семьи в одном месте</p>
             <div class="sync-status" id="syncStatus"> Подключение...</div>
         </div>
         
         <div class="calendar">
-            <div class="month-title" id="monthTitle">Сентябрь 2026</div>
+            <div class="month-header">
+                <button class="month-nav" onclick="changeMonth(-1)">◀</button>
+                <div class="month-title" id="monthTitle">Сентябрь 2026</div>
+                <button class="month-nav" onclick="changeMonth(1)">▶</button>
+            </div>
             
             <div class="weekdays">
                 <div class="weekday">Пн</div>
@@ -319,9 +422,18 @@
                         <option value="Мама">Мама</option>
                         <option value="Гоша">Гоша</option>
                         <option value="Рома">Рома</option>
+                        <option value="Вся семья">Вся семья</option>
                     </select>
                 </div>
-                <button class="btn btn-primary" onclick="saveEvent()">Сохранить</button>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="repeatWeekly">
+                    <label for="repeatWeekly">Повторять каждую неделю</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="sendNotification" checked>
+                    <label for="sendNotification">Отправить уведомление семье</label>
+                </div>
+                <button class="btn btn-primary" onclick="saveEvent()" style="margin-top: 15px;">Сохранить</button>
             </div>
             
             <div id="eventsList" style="display: none;">
@@ -349,15 +461,33 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        window.saveEventToFirestore = async function(dateKey, title, time, person) {
+        window.saveEventToFirestore = async function(dateKey, title, time, person, repeatWeekly) {
             try {
-                await addDoc(collection(db, "events"), {
+                const eventData = {
                     dateKey: dateKey,
                     title: title,
                     time: time,
                     person: person,
                     createdAt: new Date()
-                });
+                };
+                
+                await addDoc(collection(db, "events"), eventData);
+                
+                // Если повторяющееся - создаем на следующие 4 недели
+                if (repeatWeekly) {
+                    const [year, month, day] = dateKey.split('-').map(Number);
+                    for (let i = 1; i <= 4; i++) {
+                        const nextDate = new Date(year, month - 1, day + (i * 7));
+                        const nextKey = `${nextDate.getFullYear()}-${nextDate.getMonth() + 1}-${nextDate.getDate()}`;
+                        await addDoc(collection(db, "events"), {
+                            ...eventData,
+                            dateKey: nextKey,
+                            isRepeat: true
+                        });
+                    }
+                }
+                
+                console.log('✅ Событие сохранено');
             } catch (e) {
                 console.error('Ошибка:', e);
                 alert('Ошибка сохранения: ' + e.message);
@@ -367,6 +497,7 @@
         window.deleteEventFromFirestore = async function(eventId) {
             try {
                 await deleteDoc(doc(db, "events", eventId));
+                console.log('✅ Событие удалено');
             } catch (e) {
                 console.error('Ошибка:', e);
                 alert('Ошибка удаления: ' + e.message);
@@ -432,19 +563,61 @@
             'Папа': 'papa',
             'Мама': 'mama',
             'Гоша': 'gosha',
-            'Рома': 'roma'
+            'Рома': 'roma',
+            'Вся семья': 'family'
         };
 
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth();
-        const currentDate = today.getDate();
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth();
+        const currentDate = new Date().getDate();
         
         const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
             'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
         
         window.currentEvents = {};
         let selectedDate = null;
+        
+        // ПИН-код (можно изменить)
+        const PIN_CODE = '1234';
+        
+        function checkPin() {
+            const input = document.getElementById('pinInput').value;
+            if (input === PIN_CODE) {
+                document.getElementById('pinScreen').classList.add('hidden');
+                localStorage.setItem('pinVerified', 'true');
+            } else {
+                document.getElementById('pinError').textContent = 'Неверный ПИН-код';
+                document.getElementById('pinInput').value = '';
+            }
+        }
+        
+        // Проверяем, введен ли уже ПИН
+        if (localStorage.getItem('pinVerified') === 'true') {
+            document.getElementById('pinScreen').classList.add('hidden');
+        }
+        
+        // Enter для ПИНа
+        document.getElementById('pinInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') checkPin();
+        });
+        
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            updateCalendar();
+        }
+        
+        function updateCalendar() {
+            document.getElementById('monthTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+            applyMonthColors();
+            window.generateCalendar();
+        }
         
         function applyMonthColors() {
             const colors = monthColors[currentMonth];
@@ -460,8 +633,6 @@
                 todayElement.style.borderColor = colors.accent;
             }
         }
-        
-        document.getElementById('monthTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
         
         window.generateCalendar = function() {
             const calendarDays = document.getElementById('calendarDays');
@@ -485,7 +656,9 @@
                 const dayDiv = document.createElement('div');
                 dayDiv.className = 'day';
                 
-                if (day === currentDate) dayDiv.classList.add('today');
+                if (day === currentDate && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear()) {
+                    dayDiv.classList.add('today');
+                }
                 
                 const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
                 const dayEvents = window.currentEvents[dateKey] || [];
@@ -539,6 +712,7 @@
             document.getElementById('addEventModal').classList.remove('active');
             document.getElementById('eventTitle').value = '';
             document.getElementById('eventTime').value = '';
+            document.getElementById('repeatWeekly').checked = false;
         }
         
         function showAddForm() {
@@ -563,7 +737,7 @@
                     <div class="event-info">
                         <div class="event-title">${event.title}</div>
                         <div class="event-details">
-                            ${event.time ? ' ' + event.time + ' | ' : ''}
+                            ${event.time ? '🕐 ' + event.time + ' | ' : ''}
                             <span class="event-person-tag ${personClass}">${event.person}</span>
                         </div>
                     </div>
@@ -577,6 +751,8 @@
             const title = document.getElementById('eventTitle').value.trim();
             const time = document.getElementById('eventTime').value;
             const person = document.getElementById('eventPerson').value;
+            const repeatWeekly = document.getElementById('repeatWeekly').checked;
+            const sendNotification = document.getElementById('sendNotification').checked;
             
             if (!title) {
                 alert('Введите название события');
@@ -584,7 +760,27 @@
             }
             
             const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
-            await window.saveEventToFirestore(dateKey, title, time, person);
+            await window.saveEventToFirestore(dateKey, title, time, person, repeatWeekly);
+            
+            // Отправляем уведомление
+            if (sendNotification && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification('📅 Новое событие!', {
+                        body: `${title} - ${person} в ${time || 'весь день'}`,
+                        icon: 'icon-192.png'
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification(' Новое событие!', {
+                                body: `${title} - ${person} в ${time || 'весь день'}`,
+                                icon: 'icon-192.png'
+                            });
+                        }
+                    });
+                }
+            }
+            
             closeModal();
         }
         
@@ -603,8 +799,7 @@
         function startApp() {
             if (window.firebaseReady) {
                 window.listenToEvents();
-                window.generateCalendar();
-                applyMonthColors();
+                updateCalendar();
             } else {
                 setTimeout(startApp, 100);
             }
