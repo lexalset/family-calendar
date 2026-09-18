@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Семейный календарь</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            transition: background 0.5s ease;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            color: white;
+            padding: 30px;
+            text-align: center;
+            transition: background 0.5s ease;
+        }
+        
+        .header h1 { font-size: 32px; margin-bottom: 10px; }
+        .header p { font-size: 16px; opacity: 0.9; }
+        
+        .sync-status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .sync-status.connected { background: rgba(67, 233, 123, 0.3); }
+        .sync-status.error { background: rgba(255, 107, 107, 0.3); }
+        
+        .calendar { padding: 30px; }
+        
+        .month-title {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: color 0.5s ease;
+        }
+        
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .weekday {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            transition: color 0.5s ease;
+        }
+        
+        .days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+        
+        .day {
+            min-height: 100px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .day:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .day-number {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .day.today { border-width: 3px; }
+        .day.today .day-number { color: white; }
+        
+        .events-container {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .event-tag {
+            font-size: 11px;
+            padding: 3px 6px;
+            border-radius: 5px;
+            color: white;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .event-tag.papa { background: #4facfe; }
+        .event-tag.mama { background: #d57eeb; }
+        .event-tag.gosha { background: #43e97b; }
+        .event-tag.roma { background: #fa709a; }
+        
+        .more-events {
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+            margin-top: 2px;
+        }
+        
+        .day.other-month { opacity: 0.3; }
+        
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+        }
+        
+        .event-item {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .event-info { flex: 1; }
+        
+        .event-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .event-details { font-size: 14px; color: #666; }
+        
+        .event-person-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 5px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 5px;
+        }
+        
+        .delete-event {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .no-events {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" id="header">
+            <h1>👨‍👩‍👧‍👦 Семейный календарь</h1>
+            <p>Все планы семьи в одном месте</p>
+            <div class="sync-status" id="syncStatus">⏳ Подключение...</div>
+        </div>
+        
+        <div class="calendar">
+            <div class="month-title" id="monthTitle">Сентябрь 2026</div>
+            
+            <div class="weekdays">
+                <div class="weekday">Пн</div>
+                <div class="weekday">Вт</div>
+                <div class="weekday">Ср</div>
+                <div class="weekday">Чт</div>
+                <div class="weekday">Пт</div>
+                <div class="weekday">Сб</div>
+                <div class="weekday">Вс</div>
+            </div>
+            
+            <div class="days" id="calendarDays"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="addEventModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Добавить событие</h2>
+                <button class="close-modal" onclick="closeModal()">✕</button>
+            </div>
+            
+            <div id="addEventForm">
+                <div class="form-group">
+                    <label>Название события</label>
+                    <input type="text" id="eventTitle" placeholder="Например: Больница">
+                </div>
+                <div class="form-group">
+                    <label>Время</label>
+                    <input type="time" id="eventTime">
+                </div>
+                <div class="form-group">
+                    <label>Для кого</label>
+                    <select id="eventPerson">
+                        <option value="Папа">Папа</option>
+                        <option value="Мама">Мама</option>
+                        <option value="Гоша">Гоша</option>
+                        <option value="Рома">Рома</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="saveEvent()">Сохранить</button>
+            </div>
+            
+            <div id="eventsList" style="display: none;">
+                <h3 style="margin-bottom: 15px;">События на этот день:</h3>
+                <div id="eventsContainer"></div>
+                <button class="btn btn-primary" onclick="showAddForm()" style="margin-top: 15px;">+ Добавить событие</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, where } 
+            from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        // ⚠️ ВАЖНО: Вставь СВОЮ конфигурацию из Firebase Console!
+       const firebaseConfig = {
+  apiKey: "AIzaSyAwiL_rTfgmSAxxwgoGY-BHQqKhXVFPCR4",
+  authDomain: "family-calendar-23e17.firebaseapp.com",
+  projectId: "family-calendar-23e17",
+  storageBucket: "family-calendar-23e17.firebasestorage.app",
+  messagingSenderId: "1025343495734",
+  appId: "1:1025343495734:web:a268856e2e6075b817c297"
+};
+
+        // Инициализация Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Делаем функции доступными глобально
+        window.saveEventToFirestore = async function(dateKey, title, time, person) {
+            try {
+                await addDoc(collection(db, "events"), {
+                    dateKey: dateKey,
+                    title: title,
+                    time: time,
+                    person: person,
+                    createdAt: new Date()
+                });
+                console.log('✅ Событие сохранено');
+            } catch (e) {
+                console.error('❌ Ошибка:', e);
+                alert('Ошибка сохранения: ' + e.message);
+            }
+        };
+        
+        window.deleteEventFromFirestore = async function(eventId) {
+            try {
+                await deleteDoc(doc(db, "events", eventId));
+                console.log('✅ Событие удалено');
+            } catch (e) {
+                console.error('❌ Ошибка:', e);
+                alert('Ошибка удаления: ' + e.message);
+            }
+        };
+        
+        // Слушаем изменения в базе данных в реальном времени
+        window.listenToEvents = function() {
+            const q = query(collection(db, "events"));
+            onSnapshot(q, (snapshot) => {
+                const allEvents = {};
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const key = data.dateKey;
+                    if (!allEvents[key]) allEvents[key] = [];
+                    allEvents[key].push({
+                        id: doc.id,
+                        title: data.title,
+                        time: data.time,
+                        person: data.person
+                    });
+                });
+                
+                // Сортируем по времени
+                Object.keys(allEvents).forEach(key => {
+                    allEvents[key].sort((a, b) => {
+                        if (!a.time) return 1;
+                        if (!b.time) return -1;
+                        return a.time.localeCompare(b.time);
+                    });
+                });
+                
+                window.currentEvents = allEvents;
+                window.generateCalendar();
+                
+                // Обновляем статус
+                document.getElementById('syncStatus').textContent = '✅ Синхронизировано';
+                document.getElementById('syncStatus').className = 'sync-status connected';
+            }, (error) => {
+                console.error('Ошибка синхронизации:', error);
+                document.getElementById('syncStatus').textContent = '❌ Ошибка подключения';
+                document.getElementById('syncStatus').className = 'sync-status error';
+            });
+        };
+        
+        // Сигнализируем, что Firebase готов
+        window.firebaseReady = true;
+    </script>
+
+    <script>
+        // Цветовые схемы для месяцев
+        const monthColors = {
+            0: { gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', background: 'linear-gradient(135deg, #e0e7ff 0%, #f0f4ff 100%)', accent: '#667eea' },
+            1: { gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', background: 'linear-gradient(135deg, #f0f9ff 0%, #fef5f5 100%)', accent: '#a8edea' },
+            2: { gradient: 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)', background: 'linear-gradient(135deg, #f0fff4 0%, #f0f9ff 100%)', accent: '#84fab0' },
+            3: { gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)', background: 'linear-gradient(135deg, #fff5f5 0%, #fef5ff 100%)', accent: '#d57eeb' },
+            4: { gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', background: 'linear-gradient(135deg, #f0fff4 0%, #f0fffc 100%)', accent: '#43e97b' },
+            5: { gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', background: 'linear-gradient(135deg, #f0f9ff 0%, #f0fffe 100%)', accent: '#4facfe' },
+            6: { gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', background: 'linear-gradient(135deg, #e0f7ff 0%, #f0fffe 100%)', accent: '#0099cc' },
+            7: { gradient: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)', background: 'linear-gradient(135deg, #fffbf0 0%, #fff5f0 100%)', accent: '#f6d365' },
+            8: { gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', background: 'linear-gradient(135deg, #fff5f0 0%, #fffbf0 100%)', accent: '#fa709a' },
+            9: { gradient: 'linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)', background: 'linear-gradient(135deg, #fff5f0 0%, #fff0f5 100%)', accent: '#ff9a56' },
+            10: { gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)', background: 'linear-gradient(135deg, #f5f0ff 0%, #fef5ff 100%)', accent: '#a18cd1' },
+            11: { gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', background: 'linear-gradient(135deg, #f0f0ff 0%, #f5f0ff 100%)', accent: '#764ba2' }
+        };
+
+        const personColors = {
+            'Папа': 'papa',
+            'Мама': 'mama',
+            'Гоша': 'gosha',
+            'Рома': 'roma'
+        };
+
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        const currentDate = today.getDate();
+        
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        
+        // Общая база событий (теперь из Firebase)
+        window.currentEvents = {};
+        let selectedDate = null;
+        
+        function applyMonthColors() {
+            const colors = monthColors[currentMonth];
+            document.body.style.background = colors.background;
+            document.getElementById('header').style.background = colors.gradient;
+            document.getElementById('monthTitle').style.color = colors.accent;
+            
+            document.querySelectorAll('.weekday').forEach(day => day.style.color = colors.accent);
+            
+            const todayElement = document.querySelector('.day.today');
+            if (todayElement) {
+                todayElement.style.background = colors.gradient;
+                todayElement.style.borderColor = colors.accent;
+            }
+        }
+        
+        document.getElementById('monthTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        
+        window.generateCalendar = function() {
+            const calendarDays = document.getElementById('calendarDays');
+            calendarDays.innerHTML = '';
+            
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            
+            let startingDay = firstDay.getDay() - 1;
+            if (startingDay < 0) startingDay = 6;
+            
+            const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+            for (let i = startingDay - 1; i >= 0; i--) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day other-month';
+                dayDiv.innerHTML = `<div class="day-number">${prevMonthLastDay - i}</div>`;
+                calendarDays.appendChild(dayDiv);
+            }
+            
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day';
+                
+                if (day === currentDate) dayDiv.classList.add('today');
+                
+                const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
+                const dayEvents = window.currentEvents[dateKey] || [];
+                
+                let eventsHTML = '';
+                if (dayEvents.length > 0) {
+                    eventsHTML = '<div class="events-container">';
+                    const maxShow = 3;
+                    dayEvents.slice(0, maxShow).forEach(event => {
+                        const personClass = personColors[event.person] || 'papa';
+                        const timeStr = event.time ? event.time + ' ' : '';
+                        eventsHTML += `<div class="event-tag ${personClass}">${timeStr}${event.person}</div>`;
+                    });
+                    if (dayEvents.length > maxShow) {
+                        eventsHTML += `<div class="more-events">+${dayEvents.length - maxShow}</div>`;
+                    }
+                    eventsHTML += '</div>';
+                }
+                
+                dayDiv.innerHTML = `<div class="day-number">${day}</div>${eventsHTML}`;
+                dayDiv.onclick = () => openModal(day);
+                
+                calendarDays.appendChild(dayDiv);
+            }
+            
+            const totalCells = calendarDays.children.length;
+            const remainingCells = 42 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day other-month';
+                dayDiv.innerHTML = `<div class="day-number">${day}</div>`;
+                calendarDays.appendChild(dayDiv);
+            }
+        }
+        
+        function openModal(day) {
+            selectedDate = day;
+            const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
+            const dayEvents = window.currentEvents[dateKey] || [];
+            
+            if (dayEvents.length > 0) {
+                showEventsList(dayEvents);
+            } else {
+                showAddForm();
+            }
+            
+            document.getElementById('addEventModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('addEventModal').classList.remove('active');
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('eventTime').value = '';
+        }
+        
+        function showAddForm() {
+            document.getElementById('addEventForm').style.display = 'block';
+            document.getElementById('eventsList').style.display = 'none';
+            document.getElementById('modalTitle').textContent = `Добавить событие на ${selectedDate} ${monthNames[currentMonth].toLowerCase()}`;
+        }
+        
+        function showEventsList(dayEvents) {
+            document.getElementById('addEventForm').style.display = 'none';
+            document.getElementById('eventsList').style.display = 'block';
+            document.getElementById('modalTitle').textContent = `События на ${selectedDate} ${monthNames[currentMonth].toLowerCase()}`;
+            
+            const container = document.getElementById('eventsContainer');
+            container.innerHTML = '';
+            
+            dayEvents.forEach(event => {
+                const personClass = personColors[event.person] || 'papa';
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event-item';
+                eventDiv.innerHTML = `
+                    <div class="event-info">
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-details">
+                            ${event.time ? '🕐 ' + event.time + ' | ' : ''}
+                            <span class="event-person-tag ${personClass}">${event.person}</span>
+                        </div>
+                    </div>
+                    <button class="delete-event" onclick="deleteEvent('${event.id}')">Удалить</button>
+                `;
+                container.appendChild(eventDiv);
+            });
+        }
+        
+        async function saveEvent() {
+            const title = document.getElementById('eventTitle').value.trim();
+            const time = document.getElementById('eventTime').value;
+            const person = document.getElementById('eventPerson').value;
+            
+            if (!title) {
+                alert('Введите название события');
+                return;
+            }
+            
+            const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
+            
+            // Сохраняем в Firebase
+            await window.saveEventToFirestore(dateKey, title, time, person);
+            closeModal();
+        }
+        
+        async function deleteEvent(eventId) {
+            await window.deleteEventFromFirestore(eventId);
+            
+            const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
+            const dayEvents = window.currentEvents[dateKey] || [];
+            if (dayEvents.length > 0) {
+                showEventsList(dayEvents);
+            } else {
+                showAddForm();
+            }
+        }
+        
+        // Запуск после загрузки Firebase
+        function startApp() {
+            if (window.firebaseReady) {
+                window.listenToEvents();
+                window.generateCalendar();
+                applyMonthColors();
+            } else {
+                setTimeout(startApp, 100);
+            }
+        }
+        
+        startApp();
+    </script>
+</body>
+</html>
