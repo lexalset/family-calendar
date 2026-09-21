@@ -52,6 +52,19 @@
         .sync-status.connected { background: rgba(67, 233, 123, 0.3); }
         .sync-status.error { background: rgba(255, 107, 107, 0.3); }
         
+        .access-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 8px;
+            margin-left: 5px;
+        }
+        
+        .access-badge.view-only { background: rgba(255, 193, 7, 0.3); }
+        .access-badge.admin { background: rgba(67, 233, 123, 0.3); }
+        
         .install-btn {
             display: none;
             margin-top: 10px;
@@ -355,6 +368,49 @@
             color: #333;
         }
         
+        .pin-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .pin-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .pin-option:hover {
+            border-color: #667eea;
+            background: #f5f5f5;
+        }
+        
+        .pin-option.selected {
+            border-color: #667eea;
+            background: #e0e7ff;
+        }
+        
+        .pin-option-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .pin-option-title {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .pin-option-desc {
+            font-size: 11px;
+            color: #666;
+        }
+        
         .pin-input {
             width: 100%;
             padding: 15px;
@@ -372,6 +428,17 @@
             font-size: 14px;
         }
         
+        .view-only-notice {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            text-align: center;
+        }
+        
         @media (max-width: 600px) {
             body { padding: 5px; }
             .header h1 { font-size: 20px; }
@@ -382,13 +449,27 @@
             .event-tag { font-size: 8px; padding: 2px 3px; }
             .weekday { font-size: 11px; padding: 6px 1px; }
             .month-nav { padding: 5px 10px; font-size: 20px; }
+            .pin-options { flex-direction: column; }
         }
     </style>
 </head>
 <body>
+    <!-- ПИН-экран -->
     <div class="pin-screen" id="pinScreen">
         <div class="pin-container">
-            <h2>🔒 Введите ПИН-код</h2>
+            <h2>🔒 Выберите режим доступа</h2>
+            <div class="pin-options">
+                <div class="pin-option" onclick="selectAccessType('view')">
+                    <div class="pin-option-icon">👁️</div>
+                    <div class="pin-option-title">Только просмотр</div>
+                    <div class="pin-option-desc">Смотреть календарь</div>
+                </div>
+                <div class="pin-option" onclick="selectAccessType('admin')">
+                    <div class="pin-option-icon">️</div>
+                    <div class="pin-option-title">Редактирование</div>
+                    <div class="pin-option-desc">Добавлять и удалять</div>
+                </div>
+            </div>
             <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="****">
             <button class="btn btn-primary" onclick="checkPin()">Войти</button>
             <div class="pin-error" id="pinError"></div>
@@ -399,7 +480,10 @@
         <div class="header" id="header">
             <h1> Календарь Теняковых</h1>
             <p>Все планы семьи в одном месте</p>
-            <div class="sync-status" id="syncStatus">⏳ Подключение...</div>
+            <div>
+                <span class="sync-status" id="syncStatus">⏳ Подключение...</span>
+                <span class="access-badge" id="accessBadge"></span>
+            </div>
             <button class="install-btn" id="installBtn">📱 Установить приложение</button>
         </div>
         
@@ -429,6 +513,11 @@
             <div class="modal-header">
                 <h2 id="modalTitle">Добавить событие</h2>
                 <button class="close-modal" onclick="closeModal()">✕</button>
+            </div>
+            
+            <!-- Уведомление для режима просмотра -->
+            <div class="view-only-notice" id="viewOnlyNotice" style="display: none;">
+                 Режим только для просмотра. Редактирование недоступно.
             </div>
             
             <div id="addEventForm">
@@ -464,7 +553,7 @@
             <div id="eventsList" style="display: none;">
                 <h3 style="margin-bottom: 15px; font-size: 16px;">События на этот день:</h3>
                 <div id="eventsContainer"></div>
-                <button class="btn btn-primary" onclick="showAddForm()" style="margin-top: 15px;">+ Добавить событие</button>
+                <button class="btn btn-primary" id="addEventBtn" onclick="showAddForm()" style="margin-top: 15px;">+ Добавить событие</button>
             </div>
         </div>
     </div>
@@ -591,6 +680,12 @@
             'Вся семья': 'family'
         };
 
+        // Пароли
+        const PIN_VIEW = '1234';
+        const PIN_ADMIN = '5678';
+        
+        let currentAccessType = null; // 'view' или 'admin'
+
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth();
         const currentDate = new Date().getDate();
@@ -601,21 +696,55 @@
         window.currentEvents = {};
         let selectedDate = null;
         
-        const PIN_CODE = '1234';
+        function selectAccessType(type) {
+            currentAccessType = type;
+            document.querySelectorAll('.pin-option').forEach(opt => opt.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+        }
         
         function checkPin() {
             const input = document.getElementById('pinInput').value;
-            if (input === PIN_CODE) {
+            
+            if (!currentAccessType) {
+                document.getElementById('pinError').textContent = 'Выберите режим доступа';
+                return;
+            }
+            
+            let isValid = false;
+            if (currentAccessType === 'view' && input === PIN_VIEW) {
+                isValid = true;
+            } else if (currentAccessType === 'admin' && input === PIN_ADMIN) {
+                isValid = true;
+            }
+            
+            if (isValid) {
                 document.getElementById('pinScreen').classList.add('hidden');
+                localStorage.setItem('accessType', currentAccessType);
                 localStorage.setItem('pinVerified', 'true');
+                updateAccessBadge();
             } else {
                 document.getElementById('pinError').textContent = 'Неверный ПИН-код';
                 document.getElementById('pinInput').value = '';
             }
         }
         
-        if (localStorage.getItem('pinVerified') === 'true') {
+        function updateAccessBadge() {
+            const badge = document.getElementById('accessBadge');
+            if (currentAccessType === 'view') {
+                badge.textContent = '👁️ Только просмотр';
+                badge.className = 'access-badge view-only';
+            } else if (currentAccessType === 'admin') {
+                badge.textContent = '️ Редактирование';
+                badge.className = 'access-badge admin';
+            }
+        }
+        
+        // Проверяем сохраненный доступ
+        const savedAccessType = localStorage.getItem('accessType');
+        if (localStorage.getItem('pinVerified') === 'true' && savedAccessType) {
+            currentAccessType = savedAccessType;
             document.getElementById('pinScreen').classList.add('hidden');
+            updateAccessBadge();
         }
         
         document.getElementById('pinInput').addEventListener('keypress', function(e) {
@@ -720,10 +849,26 @@
             const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
             const dayEvents = window.currentEvents[dateKey] || [];
             
+            // Показываем уведомление для режима просмотра
+            const viewOnlyNotice = document.getElementById('viewOnlyNotice');
+            const addEventBtn = document.getElementById('addEventBtn');
+            
+            if (currentAccessType === 'view') {
+                viewOnlyNotice.style.display = 'block';
+                addEventBtn.style.display = 'none';
+            } else {
+                viewOnlyNotice.style.display = 'none';
+                addEventBtn.style.display = 'block';
+            }
+            
             if (dayEvents.length > 0) {
                 showEventsList(dayEvents);
             } else {
-                showAddForm();
+                if (currentAccessType === 'view') {
+                    showEventsList([]);
+                } else {
+                    showAddForm();
+                }
             }
             
             document.getElementById('addEventModal').classList.add('active');
@@ -750,10 +895,21 @@
             const container = document.getElementById('eventsContainer');
             container.innerHTML = '';
             
+            if (dayEvents.length === 0) {
+                container.innerHTML = '<div class="no-events">Нет событий на этот день</div>';
+                return;
+            }
+            
             dayEvents.forEach(event => {
                 const personClass = personColors[event.person] || 'papa';
                 const eventDiv = document.createElement('div');
                 eventDiv.className = 'event-item';
+                
+                // Кнопка удаления только для администраторов
+                const deleteButton = currentAccessType === 'admin' 
+                    ? `<button class="delete-event" onclick="deleteEvent('${event.id}')">Удалить</button>`
+                    : '';
+                
                 eventDiv.innerHTML = `
                     <div class="event-info">
                         <div class="event-title">${event.title}</div>
@@ -762,13 +918,18 @@
                             <span class="event-person-tag ${personClass}">${event.person}</span>
                         </div>
                     </div>
-                    <button class="delete-event" onclick="deleteEvent('${event.id}')">Удалить</button>
+                    ${deleteButton}
                 `;
                 container.appendChild(eventDiv);
             });
         }
         
         async function saveEvent() {
+            if (currentAccessType !== 'admin') {
+                alert('У вас нет прав для редактирования');
+                return;
+            }
+            
             const title = document.getElementById('eventTitle').value.trim();
             const time = document.getElementById('eventTime').value;
             const person = document.getElementById('eventPerson').value;
@@ -805,6 +966,11 @@
         }
         
         async function deleteEvent(eventId) {
+            if (currentAccessType !== 'admin') {
+                alert('У вас нет прав для удаления');
+                return;
+            }
+            
             await window.deleteEventFromFirestore(eventId);
             
             const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDate}`;
