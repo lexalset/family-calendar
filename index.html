@@ -135,7 +135,7 @@
         }
         
         .day {
-            min-height: 80px;
+            min-height: 90px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             padding: 5px;
@@ -170,14 +170,26 @@
         }
         
         .event-tag {
-            font-size: 9px;
+            font-size: 8px;
             padding: 2px 4px;
-            border-radius: 4px;
+            border-radius: 3px;
             color: white;
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .event-tag .time {
+            font-size: 7px;
+            opacity: 0.9;
+        }
+        
+        .event-tag .person {
+            font-weight: bold;
         }
         
         .event-tag.papa { background: #4facfe; }
@@ -187,10 +199,11 @@
         .event-tag.family { background: #f6d365; }
         
         .more-events {
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
             text-align: center;
             margin-top: 2px;
+            font-weight: bold;
         }
         
         .day.other-month { opacity: 0.3; }
@@ -439,17 +452,51 @@
             text-align: center;
         }
         
+        /* Легенда цветов */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            padding: 0 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        
+        .legend-color.papa { background: #4facfe; }
+        .legend-color.mama { background: #d57eeb; }
+        .legend-color.gosha { background: #43e97b; }
+        .legend-color.roma { background: #fa709a; }
+        .legend-color.family { background: #f6d365; }
+        
         @media (max-width: 600px) {
             body { padding: 5px; }
             .header h1 { font-size: 20px; }
             .header p { font-size: 12px; }
             .month-title { font-size: 18px; }
-            .day { min-height: 70px; }
+            .day { min-height: 80px; }
             .day-number { font-size: 14px; }
-            .event-tag { font-size: 8px; padding: 2px 3px; }
+            .event-tag { font-size: 7px; padding: 2px 3px; }
+            .event-tag .time { font-size: 6px; }
             .weekday { font-size: 11px; padding: 6px 1px; }
             .month-nav { padding: 5px 10px; font-size: 20px; }
             .pin-options { flex-direction: column; }
+            .legend { gap: 6px; }
+            .legend-item { font-size: 10px; }
+            .legend-color { width: 10px; height: 10px; }
         }
     </style>
 </head>
@@ -465,7 +512,7 @@
                     <div class="pin-option-desc">Смотреть календарь</div>
                 </div>
                 <div class="pin-option" onclick="selectAccessType('admin')">
-                    <div class="pin-option-icon">️</div>
+                    <div class="pin-option-icon">✏️</div>
                     <div class="pin-option-title">Редактирование</div>
                     <div class="pin-option-desc">Добавлять и удалять</div>
                 </div>
@@ -478,18 +525,18 @@
 
     <div class="container">
         <div class="header" id="header">
-            <h1> Календарь Теняковых</h1>
+            <h1>🐱 Календарь Теняковых</h1>
             <p>Все планы семьи в одном месте</p>
             <div>
                 <span class="sync-status" id="syncStatus">⏳ Подключение...</span>
                 <span class="access-badge" id="accessBadge"></span>
             </div>
-            <button class="install-btn" id="installBtn">📱 Установить приложение</button>
+            <button class="install-btn" id="installBtn"> Установить приложение</button>
         </div>
         
         <div class="calendar">
             <div class="month-header">
-                <button class="month-nav" onclick="changeMonth(-1)">◀</button>
+                <button class="month-nav" onclick="changeMonth(-1)"></button>
                 <div class="month-title" id="monthTitle">Сентябрь 2026</div>
                 <button class="month-nav" onclick="changeMonth(1)">▶</button>
             </div>
@@ -505,6 +552,15 @@
             </div>
             
             <div class="days" id="calendarDays"></div>
+            
+            <!-- Легенда цветов -->
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color papa"></div>Папа</div>
+                <div class="legend-item"><div class="legend-color mama"></div>Мама</div>
+                <div class="legend-item"><div class="legend-color gosha"></div>Гоша</div>
+                <div class="legend-item"><div class="legend-color roma"></div>Рома</div>
+                <div class="legend-item"><div class="legend-color family"></div>Семья</div>
+            </div>
         </div>
     </div>
 
@@ -515,9 +571,8 @@
                 <button class="close-modal" onclick="closeModal()">✕</button>
             </div>
             
-            <!-- Уведомление для режима просмотра -->
             <div class="view-only-notice" id="viewOnlyNotice" style="display: none;">
-                 Режим только для просмотра. Редактирование недоступно.
+                👁️ Режим только для просмотра. Редактирование недоступно.
             </div>
             
             <div id="addEventForm">
@@ -680,11 +735,19 @@
             'Вся семья': 'family'
         };
 
-        // Пароли
+        // Инициалы для компактного отображения
+        const personInitials = {
+            'Папа': 'П',
+            'Мама': 'М',
+            'Гоша': 'Г',
+            'Рома': 'Р',
+            'Вся семья': 'ВС'
+        };
+
         const PIN_VIEW = '1234';
         const PIN_ADMIN = '0211';
         
-        let currentAccessType = null; // 'view' или 'admin'
+        let currentAccessType = null;
 
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth();
@@ -734,12 +797,11 @@
                 badge.textContent = '👁️ Только просмотр';
                 badge.className = 'access-badge view-only';
             } else if (currentAccessType === 'admin') {
-                badge.textContent = '️ Редактирование';
+                badge.textContent = '✏️ Редактирование';
                 badge.className = 'access-badge admin';
             }
         }
         
-        // Проверяем сохраненный доступ
         const savedAccessType = localStorage.getItem('accessType');
         if (localStorage.getItem('pinVerified') === 'true' && savedAccessType) {
             currentAccessType = savedAccessType;
@@ -816,11 +878,12 @@
                 let eventsHTML = '';
                 if (dayEvents.length > 0) {
                     eventsHTML = '<div class="events-container">';
-                    const maxShow = 3;
+                    const maxShow = 2; // Показываем только 2 события
                     dayEvents.slice(0, maxShow).forEach(event => {
                         const personClass = personColors[event.person] || 'papa';
-                        const timeStr = event.time ? event.time + ' ' : '';
-                        eventsHTML += `<div class="event-tag ${personClass}">${timeStr}${event.person}</div>`;
+                        const initial = personInitials[event.person] || event.person[0];
+                        const timeStr = event.time ? `<span class="time">${event.time}</span> ` : '';
+                        eventsHTML += `<div class="event-tag ${personClass}">${timeStr}<span class="person">${initial}</span></div>`;
                     });
                     if (dayEvents.length > maxShow) {
                         eventsHTML += `<div class="more-events">+${dayEvents.length - maxShow}</div>`;
@@ -849,7 +912,6 @@
             const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
             const dayEvents = window.currentEvents[dateKey] || [];
             
-            // Показываем уведомление для режима просмотра
             const viewOnlyNotice = document.getElementById('viewOnlyNotice');
             const addEventBtn = document.getElementById('addEventBtn');
             
@@ -905,7 +967,6 @@
                 const eventDiv = document.createElement('div');
                 eventDiv.className = 'event-item';
                 
-                // Кнопка удаления только для администраторов
                 const deleteButton = currentAccessType === 'admin' 
                     ? `<button class="delete-event" onclick="deleteEvent('${event.id}')">Удалить</button>`
                     : '';
@@ -982,7 +1043,6 @@
             }
         }
         
-        // PWA установка
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
