@@ -80,6 +80,30 @@
         
         .install-btn.visible { display: inline-block; }
         
+        .view-switcher {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .view-btn {
+            padding: 6px 16px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .view-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
         .calendar { padding: 15px; }
         
         .month-header {
@@ -195,8 +219,8 @@
         .event-tag.papa { background: #4facfe; }
         .event-tag.mama { background: #d57eeb; }
         .event-tag.gosha { background: #43e97b; }
-        .event-tag.roma { background: #fa709a; }
-        .event-tag.family { background: #f6d365; }
+        .event-tag.roma { background: #f6d365; color: #333; }
+        .event-tag.family { background: #ff6b6b; }
         
         .more-events {
             font-size: 8px;
@@ -207,6 +231,104 @@
         }
         
         .day.other-month { opacity: 0.3; }
+        
+        /* Недельный вид */
+        .week-view {
+            display: none;
+        }
+        
+        .week-view.active {
+            display: block;
+        }
+        
+        .week-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .week-day-header {
+            text-align: center;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .week-day-header.today {
+            background: #667eea;
+            color: white;
+        }
+        
+        .week-day-header .day-num {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+        
+        .week-day-header .day-name {
+            font-size: 11px;
+        }
+        
+        .week-schedule {
+            margin-top: 20px;
+        }
+        
+        .schedule-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .schedule-item {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .schedule-time {
+            font-weight: bold;
+            font-size: 14px;
+            color: #667eea;
+            min-width: 50px;
+        }
+        
+        .schedule-info {
+            flex: 1;
+        }
+        
+        .schedule-title-text {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .schedule-person {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 5px;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .schedule-person.papa { background: #4facfe; }
+        .schedule-person.mama { background: #d57eeb; }
+        .schedule-person.gosha { background: #43e97b; }
+        .schedule-person.roma { background: #f6d365; color: #333; }
+        .schedule-person.family { background: #ff6b6b; }
+        
+        .schedule-day-label {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
         
         .modal {
             position: fixed;
@@ -334,8 +456,8 @@
         .event-person-tag.papa { background: #4facfe; }
         .event-person-tag.mama { background: #d57eeb; }
         .event-person-tag.gosha { background: #43e97b; }
-        .event-person-tag.roma { background: #fa709a; }
-        .event-person-tag.family { background: #f6d365; }
+        .event-person-tag.roma { background: #f6d365; color: #333; }
+        .event-person-tag.family { background: #ff6b6b; }
         
         .delete-event {
             background: #ff6b6b;
@@ -452,7 +574,6 @@
             text-align: center;
         }
         
-        /* Легенда цветов */
         .legend {
             display: flex;
             justify-content: center;
@@ -479,8 +600,8 @@
         .legend-color.papa { background: #4facfe; }
         .legend-color.mama { background: #d57eeb; }
         .legend-color.gosha { background: #43e97b; }
-        .legend-color.roma { background: #fa709a; }
-        .legend-color.family { background: #f6d365; }
+        .legend-color.roma { background: #f6d365; }
+        .legend-color.family { background: #ff6b6b; }
         
         @media (max-width: 600px) {
             body { padding: 5px; }
@@ -497,17 +618,18 @@
             .legend { gap: 6px; }
             .legend-item { font-size: 10px; }
             .legend-color { width: 10px; height: 10px; }
+            .week-day-header .day-num { font-size: 16px; }
+            .week-day-header .day-name { font-size: 10px; }
         }
     </style>
 </head>
 <body>
-    <!-- ПИН-экран -->
     <div class="pin-screen" id="pinScreen">
         <div class="pin-container">
             <h2>🔒 Выберите режим доступа</h2>
             <div class="pin-options">
                 <div class="pin-option" onclick="selectAccessType('view')">
-                    <div class="pin-option-icon">👁️</div>
+                    <div class="pin-option-icon">️</div>
                     <div class="pin-option-title">Только просмотр</div>
                     <div class="pin-option-desc">Смотреть календарь</div>
                 </div>
@@ -531,35 +653,57 @@
                 <span class="sync-status" id="syncStatus">⏳ Подключение...</span>
                 <span class="access-badge" id="accessBadge"></span>
             </div>
-            <button class="install-btn" id="installBtn"> Установить приложение</button>
+            <div class="view-switcher">
+                <button class="view-btn active" id="monthViewBtn" onclick="switchView('month')">📅 Месяц</button>
+                <button class="view-btn" id="weekViewBtn" onclick="switchView('week')"> Неделя</button>
+            </div>
+            <button class="install-btn" id="installBtn">📱 Установить приложение</button>
         </div>
         
         <div class="calendar">
-            <div class="month-header">
-                <button class="month-nav" onclick="changeMonth(-1)"></button>
-                <div class="month-title" id="monthTitle">Сентябрь 2026</div>
-                <button class="month-nav" onclick="changeMonth(1)">▶</button>
+            <!-- Месячный вид -->
+            <div id="monthView">
+                <div class="month-header">
+                    <button class="month-nav" onclick="changeMonth(-1)">◀</button>
+                    <div class="month-title" id="monthTitle">Сентябрь 2026</div>
+                    <button class="month-nav" onclick="changeMonth(1)">▶</button>
+                </div>
+                
+                <div class="weekdays">
+                    <div class="weekday">Пн</div>
+                    <div class="weekday">Вт</div>
+                    <div class="weekday">Ср</div>
+                    <div class="weekday">Чт</div>
+                    <div class="weekday">Пт</div>
+                    <div class="weekday">Сб</div>
+                    <div class="weekday">Вс</div>
+                </div>
+                
+                <div class="days" id="calendarDays"></div>
+                
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-color papa"></div>Папа</div>
+                    <div class="legend-item"><div class="legend-color mama"></div>Мама</div>
+                    <div class="legend-item"><div class="legend-color gosha"></div>Гоша</div>
+                    <div class="legend-item"><div class="legend-color roma"></div>Рома</div>
+                    <div class="legend-item"><div class="legend-color family"></div>Семья</div>
+                </div>
             </div>
             
-            <div class="weekdays">
-                <div class="weekday">Пн</div>
-                <div class="weekday">Вт</div>
-                <div class="weekday">Ср</div>
-                <div class="weekday">Чт</div>
-                <div class="weekday">Пт</div>
-                <div class="weekday">Сб</div>
-                <div class="weekday">Вс</div>
-            </div>
-            
-            <div class="days" id="calendarDays"></div>
-            
-            <!-- Легенда цветов -->
-            <div class="legend">
-                <div class="legend-item"><div class="legend-color papa"></div>Папа</div>
-                <div class="legend-item"><div class="legend-color mama"></div>Мама</div>
-                <div class="legend-item"><div class="legend-color gosha"></div>Гоша</div>
-                <div class="legend-item"><div class="legend-color roma"></div>Рома</div>
-                <div class="legend-item"><div class="legend-color family"></div>Семья</div>
+            <!-- Недельный вид -->
+            <div id="weekView" class="week-view">
+                <div class="month-header">
+                    <button class="month-nav" onclick="changeWeek(-1)">◀</button>
+                    <div class="month-title" id="weekTitle">Текущая неделя</div>
+                    <button class="month-nav" onclick="changeWeek(1)">▶</button>
+                </div>
+                
+                <div class="week-header" id="weekHeader"></div>
+                
+                <div class="week-schedule">
+                    <div class="schedule-title">📋 Расписание на неделю:</div>
+                    <div id="weekSchedule"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -698,6 +842,7 @@
                 
                 window.currentEvents = allEvents;
                 window.generateCalendar();
+                window.generateWeekView();
                 
                 document.getElementById('syncStatus').textContent = '✅ Синхронизировано';
                 document.getElementById('syncStatus').className = 'sync-status connected';
@@ -735,7 +880,6 @@
             'Вся семья': 'family'
         };
 
-        // Инициалы для компактного отображения
         const personInitials = {
             'Папа': 'П',
             'Мама': 'М',
@@ -748,13 +892,17 @@
         const PIN_ADMIN = '0211';
         
         let currentAccessType = null;
+        let currentView = 'month';
 
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth();
+        let currentWeekOffset = 0;
         const currentDate = new Date().getDate();
         
         const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
             'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        
+        const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
         
         window.currentEvents = {};
         let selectedDate = null;
@@ -813,6 +961,18 @@
             if (e.key === 'Enter') checkPin();
         });
         
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('monthView').style.display = view === 'month' ? 'block' : 'none';
+            document.getElementById('weekView').classList.toggle('active', view === 'week');
+            document.getElementById('monthViewBtn').classList.toggle('active', view === 'month');
+            document.getElementById('weekViewBtn').classList.toggle('active', view === 'week');
+            
+            if (view === 'week') {
+                window.generateWeekView();
+            }
+        }
+        
         function changeMonth(delta) {
             currentMonth += delta;
             if (currentMonth > 11) {
@@ -823,6 +983,11 @@
                 currentYear--;
             }
             updateCalendar();
+        }
+        
+        function changeWeek(delta) {
+            currentWeekOffset += delta;
+            window.generateWeekView();
         }
         
         function updateCalendar() {
@@ -878,7 +1043,7 @@
                 let eventsHTML = '';
                 if (dayEvents.length > 0) {
                     eventsHTML = '<div class="events-container">';
-                    const maxShow = 2; // Показываем только 2 события
+                    const maxShow = 2;
                     dayEvents.slice(0, maxShow).forEach(event => {
                         const personClass = personColors[event.person] || 'papa';
                         const initial = personInitials[event.person] || event.person[0];
@@ -904,6 +1069,85 @@
                 dayDiv.className = 'day other-month';
                 dayDiv.innerHTML = `<div class="day-number">${day}</div>`;
                 calendarDays.appendChild(dayDiv);
+            }
+        }
+        
+        window.generateWeekView = function() {
+            const today = new Date();
+            const currentDayOfWeek = today.getDay();
+            const daysToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+            
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - daysToMonday + (currentWeekOffset * 7));
+            
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            document.getElementById('weekTitle').textContent = 
+                `${weekStart.getDate()} ${monthNames[weekStart.getMonth()]} - ${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`;
+            
+            const weekHeader = document.getElementById('weekHeader');
+            weekHeader.innerHTML = '';
+            
+            const weekSchedule = document.getElementById('weekSchedule');
+            weekSchedule.innerHTML = '';
+            
+            let allWeekEvents = [];
+            
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(weekStart);
+                day.setDate(weekStart.getDate() + i);
+                
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'week-day-header';
+                
+                if (day.getDate() === today.getDate() && day.getMonth() === today.getMonth() && day.getFullYear() === today.getFullYear()) {
+                    dayDiv.classList.add('today');
+                }
+                
+                dayDiv.innerHTML = `
+                    <div class="day-num">${day.getDate()}</div>
+                    <div class="day-name">${dayNames[day.getDay()]}</div>
+                `;
+                weekHeader.appendChild(dayDiv);
+                
+                const dateKey = `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`;
+                const dayEvents = window.currentEvents[dateKey] || [];
+                
+                dayEvents.forEach(event => {
+                    allWeekEvents.push({
+                        ...event,
+                        date: day,
+                        dateKey: dateKey
+                    });
+                });
+            }
+            
+            allWeekEvents.sort((a, b) => {
+                const dateCompare = a.date - b.date;
+                if (dateCompare !== 0) return dateCompare;
+                if (!a.time) return 1;
+                if (!b.time) return -1;
+                return a.time.localeCompare(b.time);
+            });
+            
+            if (allWeekEvents.length === 0) {
+                weekSchedule.innerHTML = '<div class="no-events">На этой неделе нет событий</div>';
+            } else {
+                allWeekEvents.forEach(event => {
+                    const personClass = personColors[event.person] || 'papa';
+                    const scheduleDiv = document.createElement('div');
+                    scheduleDiv.className = 'schedule-item';
+                    scheduleDiv.innerHTML = `
+                        <div class="schedule-time">${event.time || 'Весь день'}</div>
+                        <div class="schedule-info">
+                            <div class="schedule-title-text">${event.title}</div>
+                            <span class="schedule-person ${personClass}">${event.person}</span>
+                            <div class="schedule-day-label">${event.date.getDate()} ${monthNames[event.date.getMonth()]} (${dayNames[event.date.getDay()]})</div>
+                        </div>
+                    `;
+                    weekSchedule.appendChild(scheduleDiv);
+                });
             }
         }
         
